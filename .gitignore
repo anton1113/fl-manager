@@ -1,0 +1,11 @@
+*.iml
+*/*.iml
+.idea/
+*.jar
+*.war
+*.zip
+target/
+*/target/
+.DS_Store
+*/.DS_Store
+classes/
