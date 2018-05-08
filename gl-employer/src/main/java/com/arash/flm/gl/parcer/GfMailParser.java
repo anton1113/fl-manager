@@ -8,7 +8,7 @@ import javax.mail.Message;
  * Created by anton on 29.04.18.
  *
  */
-public abstract class GfMailParser<T extends GlMessage> {
+public abstract class GfMailParser<T extends Object> {
 
     public abstract T parse(Message message) throws Exception;
 }

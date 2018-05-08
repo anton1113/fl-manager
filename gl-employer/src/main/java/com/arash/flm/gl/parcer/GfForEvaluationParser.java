@@ -1,6 +1,6 @@
 package com.arash.flm.gl.parcer;
 
-import com.arash.flm.gl.model.mail.GlForEvaluationMessage;
+import com.arash.flm.gl.model.mail.db.GfOffer;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -16,7 +16,7 @@ import javax.mail.internet.MimeMultipart;
  *
  */
 @Component
-public class GfForEvaluationParser extends GfMailParser<GlForEvaluationMessage> {
+public class GfForEvaluationParser extends GfMailParser<GfOffer> {
 
     private static final String TITLE_LABEL = "Title: ";
     private static final String LEVEL_LABEL = "Level: ";
@@ -26,79 +26,93 @@ public class GfForEvaluationParser extends GfMailParser<GlForEvaluationMessage> 
     private static final String SPECIFIC_REQUIREMENTS_LABEL = "Specific requirements: ";
 
     @Override
-    public GlForEvaluationMessage parse(Message message) throws Exception {
+    public GfOffer parse(Message message) throws Exception {
 
-        GlForEvaluationMessage result = new GlForEvaluationMessage();
+        GfOffer gfOffer = new GfOffer();
+        gfOffer.setId(message.getSubject().substring(6, 12));
 
-        MimeMultipart mimeMultipart = (MimeMultipart) message.getContent();
+        if (message.getContent() instanceof String) {
+            parseString((String) message.getContent(), gfOffer);
+        } else if (message.getContent() instanceof MimeMultipart) {
+            parseMimeMultipart((MimeMultipart) message.getContent(), gfOffer);
+        }
+
+        return gfOffer;
+    }
+
+    private void parseMimeMultipart(MimeMultipart mimeMultipart, GfOffer gfOffer) throws Exception {
+
         int bodyPartsCount = mimeMultipart.getCount();
         for (int i = 0; i < bodyPartsCount; i++) {
             BodyPart currentBodyPart = mimeMultipart.getBodyPart(i);
             if (isHtmlBody(currentBodyPart)) {
-                parseHtml(currentBodyPart, result);
+                parseHtml(currentBodyPart, gfOffer);
             } else {
-                parseAttachment(currentBodyPart, result);
+                parseAttachment(currentBodyPart, gfOffer);
             }
         }
-
-        return result;
     }
 
-    private void parseHtml(BodyPart bodyPart, GlForEvaluationMessage message) throws Exception {
+    private void parseString(String content, GfOffer gfOffer) {
 
-        String html = (String) bodyPart.getContent();
-        Document document = Jsoup.parse(html);
+        Document document = Jsoup.parse(content);
         Element element = document.select("td.content-block").get(0);
         element.childNodes().parallelStream().forEach(node -> {
-            if (node instanceof TextNode) parseTextNode((TextNode) node, message);
-            if (node instanceof Element) parseElementNode((Element) node, message);
+            if (node instanceof TextNode) parseTextNode((TextNode) node, gfOffer);
+            if (node instanceof Element) parseElementNode((Element) node, gfOffer);
         });
     }
 
-    private void parseTextNode(TextNode textNode, GlForEvaluationMessage message) {
+    private void parseHtml(BodyPart bodyPart, GfOffer gfOffer) throws Exception {
+
+        String content = (String) bodyPart.getContent();
+        parseString(content, gfOffer);
+    }
+
+    private void parseTextNode(TextNode textNode, GfOffer gfOffer) {
 
         String text = textNode.getWholeText();
         if (text == null || text.isEmpty() || text.equals(" ")) return;
 
         if (text.startsWith(TITLE_LABEL)) {
             String title = removeLabel(text, TITLE_LABEL);
-            message.setTitle(title);
+            gfOffer.setTitle(title);
         }
 
         if (text.startsWith(LEVEL_LABEL)) {
             String level = removeLabel(text, LEVEL_LABEL);
-            message.setLevel(level);
+            gfOffer.setLevel(level);
         }
 
         if (text.startsWith(DEADLINE_LABEL)) {
             String deadline = removeLabel(text, DEADLINE_LABEL);
-            message.setDeadline(deadline);
+            gfOffer.setDeadline(deadline);
         }
 
         if (text.startsWith(TASK_LABEL)) {
             String task = removeLabel(text, TASK_LABEL);
-            message.setTask(task);
+            gfOffer.setTask(task);
         }
 
         if (text.startsWith(DETAILED_EXPLANATIONS_LABEL)) {
             String detailedExplanations = removeLabel(text, DETAILED_EXPLANATIONS_LABEL);
-            message.setDetailedExplanations(detailedExplanations);
+            gfOffer.setDetailedExplanations(detailedExplanations);
         }
 
         if (text.startsWith(SPECIFIC_REQUIREMENTS_LABEL)) {
             String specificRequirements = removeLabel(text, SPECIFIC_REQUIREMENTS_LABEL);
-            message.setSpecificRequirements(specificRequirements);
+            gfOffer.setSpecificRequirements(specificRequirements);
         }
     }
 
-    private void parseElementNode(Element elementNode, GlForEvaluationMessage message) {
+    private void parseElementNode(Element elementNode, GfOffer gfOffer) {
 
         if (!"a".equals(elementNode.tag().getName())) return;
         String offerLink = elementNode.attributes().get("href");
-        message.setOfferLink(offerLink);
+        gfOffer.setOfferLink(offerLink);
     }
 
-    private void parseAttachment(BodyPart bodyPart, GlForEvaluationMessage message) {
+    private void parseAttachment(BodyPart bodyPart, GfOffer gfOffer) {
 
     }
 
